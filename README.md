@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="1500" height="333" src="/docs/image/logo (6).png"/>
+  <img src="/docs/image/logo (6).png"/>
 </p>
 
 ## What is SaMoVi ?
