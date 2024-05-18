@@ -32,4 +32,5 @@ plt.grid(True)
 plt.legend()
 
 plt.tight_layout()
+plt.savefig('./basic.jpg',dpi = 300)
 plt.show()
