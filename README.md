@@ -2,7 +2,7 @@
   <img height="300" src="/docs/image/logo (6).png"/>
 </p>
 
-## What is SaMoVi ?
+## What is mobiniq ?
 
 mobinha is a self driving system implementation project.
 mobinha performs the functions of Map-based self driving, Adaptive Cruise Control (ACC), Lane Keeping System (LKS)..
@@ -21,7 +21,7 @@ Directory Structure
         ├── control 
         └── perception
         
-# SaMoVi
+# mobiniq
 copies from mobinha and reconstruct it
 
 1. docker load download from https://drive.google.com/file/d/14u_F9XC88bxR0FuWYeuI-NzAjsTByHFw/view?usp=drive_link in /src/docker or build Dockerfile with build_docker.sh with chaning docker image name
