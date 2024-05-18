@@ -1,10 +1,10 @@
 <p align="center">
-  <img height="50" src="/docs/image/logo.png"/>
+  <img height="300" src="/docs/image/logo (6).png"/>
 </p>
 
-## What is mobinha ?
+## What is mobiniq ?
 
-mobinha is a self driving system implementation project of INHA university.
+mobinha is a self driving system implementation project.
 mobinha performs the functions of Map-based self driving, Adaptive Cruise Control (ACC), Lane Keeping System (LKS)..
 
 Directory Structure
@@ -21,3 +21,15 @@ Directory Structure
         ├── control 
         └── perception
         
+# mobiniq
+copies from mobinha and reconstruct it
+
+1. docker load download from https://drive.google.com/file/d/14u_F9XC88bxR0FuWYeuI-NzAjsTByHFw/view?usp=drive_link in /src/docker or build Dockerfile with build_docker.sh with chaning docker image name
+
+2. and run docker with run_container.sh and start docker after first time with start_container.sh
+
+3. In container pip3 install -r requirements.txt and install other contents in requirements.txt as comments.
+
+4. catkin_make the src/ and src/morai_ws/src or refer https://github.com/MORAI-Autonomous/MORAI-ROS_morai_msgs
+
+5. Run the system with command runmob
