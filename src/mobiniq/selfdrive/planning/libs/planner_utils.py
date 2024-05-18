@@ -434,7 +434,7 @@ def max_v_by_curvature(forward_curvature, ref_v, min_v, cur_v):
 
 def calculate_v_by_curvature(lane_information, ref_v, min_v, cur_v): # info, kph, kph, mps
     #lane information -> [1]:forward direction, [3]:curvature
-
+    forward_curvature = lane_information[3]
     a=3/1750000
     b=-9/4375
     c= 599/700
@@ -442,20 +442,20 @@ def calculate_v_by_curvature(lane_information, ref_v, min_v, cur_v): # info, kph
     
     max_curvature = 500
     min_curvature = 0
-    if lane_information[3] < min_curvature:
-        lane_information[3] = min_curvature
-    elif lane_information[3] > max_curvature:
-        lane_information[3] = max_curvature
+    if forward_curvature < min_curvature:
+        forward_curvature = min_curvature
+    elif forward_curvature > max_curvature:
+        forward_curvature = max_curvature
     
     # x=lane_information[3]
     # normalized_curvature = a*(x + 35)**3 + b*(x + 35)**2 + c*(x + 35) + 3 #0-100
     # normalized_curvature = normalized_curvature/100
-    normalized_curvature = (lane_information[3] - min_curvature) / (max_curvature - min_curvature)
+    normalized_curvature = (forward_curvature - min_curvature) / (max_curvature - min_curvature)
 
     decel = (ref_v - min_v) * (1 - normalized_curvature)
     
     return_v = ref_v - decel
-    if lane_information[3] < max_curvature:
+    if forward_curvature < max_curvature:
         if cur_v - return_v*KPH_TO_MPS > 5/HZ: # smooth deceleration
             return_v = cur_v*MPS_TO_KPH - (5/HZ*MPS_TO_KPH)
         elif cur_v*MPS_TO_KPH > min_v and return_v*KPH_TO_MPS - cur_v > 5/HZ: # smooth acceleration

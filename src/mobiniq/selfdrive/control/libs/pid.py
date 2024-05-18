@@ -135,7 +135,7 @@ class APID:
         #     accel_val = 0
         #     brake_val = -output
         # output = max(-100, min(self.ctrls[4], 100))
-        print(output)
+        # print(output)
         accel_lim = 40
         brake_lim = 50
         if self.error < 2/3.6:
