@@ -1,0 +1,2 @@
+MORAI-ROS_morai_msgs
+-DCATKIN_DEVEL_PREFIX=/workspace/mobinha_license/src/morai_ws/devel -DCMAKE_INSTALL_PREFIX=/workspace/mobinha_license/src/morai_ws/install -G Unix Makefiles

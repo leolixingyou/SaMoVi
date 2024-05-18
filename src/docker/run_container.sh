@@ -7,7 +7,7 @@ sudo docker run -it \
 --net=host \
 --gpus all \
 --privileged \
---name mob_test_test \
+--name test_env \
 mob_test_v1:latest
 
 
