@@ -93,7 +93,7 @@ class Controller:
             lah_viz = LookAheadViz(lah_pt)
             self.pub_lah.publish(lah_viz)
 
-            ### the velocity is m/s, target_v and CS.vEgo is km/h hahah
+            ### the velocity is m/s, target_v and CS.vEgo is km/h  
             accel, brake = self.apid.run(self.target_v / 3.6, CS.vEgo) 
             
             vector3.x = steer
