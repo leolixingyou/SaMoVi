@@ -1,6 +1,6 @@
 #!/bin/bash
-source /workspace/mobinha_license/src/morai_ws/devel/setup.bash
-export PYTHONPATH=$PYTHONPATH:/workspace/mobinha_license/src/mobinha/
+source /workspace/mobiniq_songdo/src/morai_ws/devel/setup.bash
+export PYTHONPATH=$PYTHONPATH:/workspace/mobiniq_songdo/src/mobiniq/
 python3 ../visualize/visualize.py 2> >(grep -v TF_REPEATED_DATA) &
 sleep 3
 python3 ../car/car.py &

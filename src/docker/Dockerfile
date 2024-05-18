@@ -67,10 +67,5 @@ RUN echo "alias cdmobexcute='cd /workspace/src/mobinha/selfdrive/manager/'" >> /
     echo "alias cdmob='cd /workspace/src/mobinha/'" >> /root/.bashrc && \
     echo "alias runmob='cd /workspace/src/mobinha/selfdrive/manager/ && ./execute_docker.sh'" >> /root/.bashrc
 
-COPY ./src/docker/ /workspace/src/docker/
 
-# Copy and run run.sh file
-COPY ./run.sh /workspace/src/docker/run.sh
-RUN chmod +x /workspace/src/docker/run.sh
-CMD ["/workspace/src/docker/run.sh"]
 
