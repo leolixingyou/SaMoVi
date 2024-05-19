@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 t = np.linspace(0, 20, 400)
 
 # Define the parabolic acceleration function (opens downwards)
-a = -0.05 * (t - 10)**2 + 5
+a = -50 * (t - 10)**2 + 5000
 
 # Integrate the acceleration to get the velocity
 # Initial velocity is assumed to be zero
@@ -32,5 +32,5 @@ plt.grid(True)
 plt.legend()
 
 plt.tight_layout()
-plt.savefig('./basic.jpg',dpi = 300)
+plt.savefig('/workspace/mobiniq_songdo/src/mobiniq/selfdrive/planning/libs/basic_big.jpg',dpi = 300)
 plt.show()

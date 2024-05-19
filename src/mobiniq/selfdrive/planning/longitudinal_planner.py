@@ -7,7 +7,7 @@ from geometry_msgs.msg import PoseArray, Pose, Point
 from visualization_msgs.msg import Marker
 
 from selfdrive.planning.libs.planner_utils import *
-from selfdrive.planning.libs.velocity_planner import *
+from selfdrive.planning.libs.velocity_planner import VELOCITY_PLANNER
 from selfdrive.visualize.rviz_utils import *
 
 KPH_TO_MPS = 1 / 3.6
@@ -33,6 +33,7 @@ class LongitudinalPlanner:
         self.target_v = 0
         self.st_param = CP.stParam._asdict()
         self.sl_param = CP.slParam._asdict()
+        self.velo_pl = VELOCITY_PLANNER(self.max_v, target_velocity=self.max_v, current_velocity=0)
 
         self.last_error = 0
         self.follow_error = 0
@@ -309,11 +310,13 @@ class LongitudinalPlanner:
             local_idx = calc_idx(local_path, (CS.position.x, CS.position.y))
             if CS.cruiseState == 1:
                 local_curv_v = calculate_v_by_curvature(self.lane_information, self.ref_v, self.min_v, CS.vEgo) # info, kph, kph, mps
-                # static_d = self.check_static_object(local_path, local_idx, (CS.position.x, CS.position.y), CS.vEgo) # output unit: idx
-                # dynamic_d = self.check_dynamic_objects(CS.vEgo, local_idx, (CS.position.x, CS.position.y)) # output unit: idx
-                # target_v_static = self.static_velocity_plan(CS.vEgo, local_curv_v, static_d)
-                # target_v_dynamic = self.dynamic_velocity_plan(CS.vEgo, local_curv_v, dynamic_d, CS.vEgo)
-                # self.target_v = min(target_v_static, target_v_dynamic)
+                static_d = self.check_static_object(local_path, local_idx, (CS.position.x, CS.position.y), CS.vEgo) # output unit: idx
+                dynamic_d = self.check_dynamic_objects(CS.vEgo, local_idx, (CS.position.x, CS.position.y)) # output unit: idx
+                target_v_static = self.static_velocity_plan(CS.vEgo, local_curv_v, static_d)
+                target_v_dynamic = self.dynamic_velocity_plan(CS.vEgo, local_curv_v, dynamic_d, CS.vEgo)
+                self.target_v = min(target_v_static, target_v_dynamic)
+                
+                self.target_v = 60
 
             else:
                 self.target_v = CS.vEgo
