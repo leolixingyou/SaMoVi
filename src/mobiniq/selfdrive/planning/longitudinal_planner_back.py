@@ -2,7 +2,7 @@ import rospy
 import math
 import time
 
-from std_msgs.msg import Float32, Int8MultiArray, Int8, String
+from std_msgs.msg import Float32, Int8MultiArray, Int8
 from geometry_msgs.msg import PoseArray, Pose, Point
 from visualization_msgs.msg import Marker
 
@@ -10,17 +10,12 @@ from selfdrive.planning.libs.planner_utils import *
 from selfdrive.planning.libs.velocity_planner import VELOCITY_PLANNER
 from selfdrive.visualize.rviz_utils import *
 
-from selfdrive.planning.libs.map import LaneletMap, TileMap
-
 KPH_TO_MPS = 1 / 3.6
 MPS_TO_KPH = 3.6
 HZ = 10
 
 class LongitudinalPlanner:
     def __init__(self, CP):
-        self.lmap = LaneletMap(CP.mapParam.path)
-        self.tmap = TileMap(self.lmap.lanelets, CP.mapParam.tileSize)
-
         self.lidar_obstacle = None
         self.traffic_light_obstacle = None
         self.can_go_check_tick = -1
@@ -28,7 +23,6 @@ class LongitudinalPlanner:
         self.can_go_timer_start = None
         self.can_go_stored = False
         self.lane_information = None
-        self.local_id = None
         self.goal_object = None
         self.M_TO_IDX = 1/CP.mapParam.precision
         self.IDX_TO_M = CP.mapParam.precision
@@ -60,7 +54,6 @@ class LongitudinalPlanner:
         rospy.Subscriber('/mobinha/perception/lidar_obstacle', PoseArray, self.lidar_obstacle_cb)
         rospy.Subscriber('/mobinha/perception/traffic_light_obstacle',PoseArray, self.traffic_light_obstacle_cb)
         rospy.Subscriber('/mobinha/planning/lane_information',Pose, self.lane_information_cb)
-        rospy.Subscriber('/mobinha/planning/local_id',String, self.local_id_cb)
         rospy.Subscriber('/mobinha/planning/goal_information', Pose, self.goal_object_cb)
         rospy.Subscriber('/mobinha/visualize/max_v', Int8, self.max_v_cb)
         rospy.Subscriber('/crosswalkPolygon', Marker, self.crosswalk_cb)
@@ -81,7 +74,7 @@ class LongitudinalPlanner:
 
     def lane_information_cb(self, msg):
         # [0] id, [1] forward_direction, [2] stop line distance [3] forward_curvature
-        self.lane_information = [msg.position.x,msg.position.y, msg.position.z, msg.orientation.x, msg.orientation.y]
+        self.lane_information = [msg.position.x,msg.position.y, msg.position.z, msg.orientation.x]
 
         if self.lane_information[0] == 979 or self.lane_information[0] == 9:
             self.ref_v = 33
@@ -89,10 +82,6 @@ class LongitudinalPlanner:
             self.ref_v = 38
         else:
             self.ref_v = self.max_v
-
-    def local_id_cb(self, msg):
-        # [0] id, [1] forward_direction, [2] stop line distance [3] forward_curvature
-        self.local_id = msg.data.split(',')
 
     def goal_object_cb(self, msg):
         self.goal_object = (msg.position.x, msg.position.y, msg.position.z)
@@ -129,7 +118,6 @@ class LongitudinalPlanner:
     # static object
     def get_safe_obs_distance_s(self, v_ego, desired_ttc=2, comfort_decel=1.5, offset=5): # cur v = v ego (m/s), 2 sec, 2.5 decel (m/s^2)
         return ((v_ego ** 2) / (2 * comfort_decel) + desired_ttc * v_ego + offset)
-    
     def desired_follow_distance_s(self, v_ego):
         return max(5, self.get_safe_obs_distance_s(v_ego))
     
@@ -186,17 +174,31 @@ class LongitudinalPlanner:
         return target_v, min_s
     
     def static_velocity_plan(self, cur_v, max_v, static_d):
-        if static_d -10  < cur_v/10:
-            target_v = 7
-        else:
-            target_v = max_v
+        target_v, min_s = self.get_params(max_v, static_d) # input static d unit (idx), output min_s unit (m)
+        follow_distance = self.desired_follow_distance_s(cur_v) #output follow_distance unit (m)
+        ttc = min_s / cur_v if cur_v != 0 else min_s
+        self.follow_error = follow_distance-min_s # negative is acceleration. but if min_s is nearby 0, we need deceleration.
+        gain = self.get_static_gain(self.follow_error, ttc)
+        if self.follow_error < 0: # MINUS is ACCEL
+            target_v = min(max_v, self.target_v + gain)
+        else: # PLUS is DECEL
+            target_v = max(0, self.target_v - gain)
         return target_v
 
     def dynamic_velocity_plan(self, cur_v, max_v, dynamic_d, v_ego):
-        if dynamic_d -10  < cur_v/10:
-            target_v = 7
-        else:
-            target_v = max_v
+        target_v, min_s = self.get_params(max_v, dynamic_d) # input static d unit (idx), output min_s unit (m)
+        follow_distance = self.desired_follow_distance(cur_v, self.rel_v + cur_v) #output follow_distance unit (m)
+        ttc = min_s / self.rel_v if self.rel_v != 0 else min_s# minus value is collision case
+        self.follow_error = follow_distance - min_s
+        gain = self.get_dynamic_gain(self.follow_error, ttc)
+        if self.follow_error < 0: # MINUS is ACCEL
+            if v_ego < 0.4*MPS_TO_KPH and (self.rel_v + cur_v) < 15*KPH_TO_MPS:
+                target_v = min(max_v, self.target_v + 0.8/HZ)
+            else:
+                target_v = min(max_v, self.target_v + gain)
+        else: # PLUS is DECEL
+            target_v = max(0, self.target_v + gain)
+
         return target_v
 
     def traffic_light_to_obstacle(self, traffic_light, forward_direction):
@@ -303,39 +305,33 @@ class LongitudinalPlanner:
 
     def run(self, sm, pp=0, local_path=None):
         CS = sm.CS
-
+        print(f'here is tht point for CS.vEgo {CS.vEgo}')
+        print(f'here is tht point for target velocity {self.target_v}')
+        print(f'here is tht point for min_v {self.min_v}')
         lgp = 0
         self.pub_target_v.publish(Float32(self.target_v))
         self.pub_accerror.publish(Float32(self.follow_error))
         if local_path != None and self.lane_information != None:
             local_idx = calc_idx(local_path, (CS.position.x, CS.position.y))
             if CS.cruiseState == 1:
-                print(f'self.ref_v is {self.ref_v}')
-                idx = self.lane_information[4]
-                local_curv_v = calculate_v_by_curvature(idx, self.lmap.lanelets, self.local_id, self.ref_v, self.min_v, CS.vEgo,self.M_TO_IDX) # info, kph, kph, mps
+                ### self.lane_infor[3] == forward curve, self.ref_v == slef.max, 
+                local_curv_v = calculate_v_by_curvature(self.lane_information, self.ref_v, self.min_v, CS.vEgo) # info, kph, kph, mps
                 static_d = self.check_static_object(local_path, local_idx, (CS.position.x, CS.position.y), CS.vEgo) # output unit: idx
                 dynamic_d = self.check_dynamic_objects(CS.vEgo, local_idx, (CS.position.x, CS.position.y)) # output unit: idx
                 target_v_static = self.static_velocity_plan(CS.vEgo, local_curv_v, static_d)
                 target_v_dynamic = self.dynamic_velocity_plan(CS.vEgo, local_curv_v, dynamic_d, CS.vEgo)
                 self.target_v = min(target_v_static, target_v_dynamic)
                 
-                print(f'local_curv_v is {local_curv_v} km/h')
-                print(f'target_v_static is {target_v_static} km/h')
-                print(f'target_v_dynamic is {target_v_dynamic} km/h')
-                print(f'current vEgo is {CS.vEgo } m/s')
-                print(f'static_d is {static_d} m')
-                print(f'here is tht point for target velocity {self.target_v} km/h')
-                print(f'here is tht point for min_v {self.min_v} km/h')
+                print(f'current vEgo is {CS.vEgo}')
+                print(f'static_d is {static_d}')
                 current_time = time.time()
                 if current_time - self.last_update_time >= self.update_interval:
                     print(f'current velocity planner is {self.velo_pl.acc_state}')
                     print(f'Max velocity planner is {self.velo_pl.max_velocity}')
                     self.velo_pl.target_v = self.target_v
-                    self.velo_pl.current_velocity_init = CS.vEgo * MPS_TO_KPH #--> needs to be km/h 
-                    if self.target_v == 7:
-                        self.target_v = 0
+                    self.velo_pl.current_velocity_init = CS.vEgo
             else:
-                self.target_v = CS.vEgo * MPS_TO_KPH
+                self.target_v = CS.vEgo
 
             if pp == 2:
                 self.target_v = 0.0

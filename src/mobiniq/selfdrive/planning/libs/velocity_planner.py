@@ -8,7 +8,7 @@ MIN_ACC = -20
 MAX_ACC = 20
 
 class VELOCITY_PLANNER:
-    def __init__(self, target_velocity, max_velocity=50, current_velocity=0) -> None:
+    def __init__(self, target_velocity = 50, max_velocity = 50, current_velocity = 0) -> None:
         self.target_v = target_velocity  # Refer from system as input
         self.max_velocity = max_velocity  # TODO: Refer from system as input
         # Accel, Brake, Keep
@@ -85,7 +85,6 @@ class VELOCITY_PLANNER:
         if self.scenarios_flag and not self.scenario_overtime:
             self.velocity_scheduling()  # -> current velocity
 
-        print(self.step_counter)
         self.velocity_log.append(self.scheduled_velocity)
         self.target_velocity_log.append(self.target_v)  # Record target velocity
         return self.scheduled_velocity

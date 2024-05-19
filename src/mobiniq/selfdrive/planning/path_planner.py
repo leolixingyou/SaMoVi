@@ -3,7 +3,7 @@
 import rospy
 import time
 from scipy.spatial import KDTree
-from std_msgs.msg import Int8, Float32, Float32MultiArray, Int8MultiArray
+from std_msgs.msg import Int8, Float32, Float32MultiArray, Int8MultiArray, String
 from geometry_msgs.msg import PoseStamped, PoseArray, Pose, Point
 from visualization_msgs.msg import Marker
 
@@ -33,7 +33,7 @@ class PathPlanner:
         self.local_id = None
         self.temp_global_idx = 0
         self.local_path_theta = None
-        self.yaw = None
+        self.f = None
         self.prev_yaw = None
         # self.global_yaw, self.global_k = [], []
 
@@ -70,6 +70,7 @@ class PathPlanner:
         self.pub_goal_object = rospy.Publisher('/mobinha/planning/goal_information', Pose, queue_size=1)
         self.pub_forward_path = rospy.Publisher('/mobinha/planning/forward_path', Marker, queue_size=1)
         self.pub_lane_information = rospy.Publisher('/mobinha/planning/lane_information', Pose, queue_size=1)
+        self.pub_local_id = rospy.Publisher('/mobinha/planning/local_id', String, queue_size=1)
         self.pub_trajectory = rospy.Publisher('/mobinha/planning/trajectory', PoseArray, queue_size=1)
         self.pub_lidar_bsd = rospy.Publisher('/mobinha/planning/lidar_bsd', Point, queue_size=1)
         self.pub_local_path_theta = rospy.Publisher('/mobinha/planning/local_path_theta', Float32MultiArray, queue_size=1)
@@ -373,6 +374,9 @@ class PathPlanner:
 
                 blinker, target_id = get_blinker(self.l_idx, self.lmap.lanelets, self.local_id, my_neighbor_id, CS.vEgo, self.M_TO_IDX, splited_local_id) 
                                                                         #,splited_local_id, self.lanechange_target_id, self.change_lane_flag)
+                msg = String()
+                msg.data = ','.join(self.local_id)
+                self.pub_local_id.publish(msg)
 
                 if blinker != 0 and self.blinker_target_id == None:
                     self.blinker_target_id = target_id

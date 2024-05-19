@@ -432,35 +432,34 @@ def max_v_by_curvature(forward_curvature, ref_v, min_v, cur_v):
 
     return return_v * KPH_TO_MPS
 
-def calculate_v_by_curvature(idx, lanelets, ids, ref_v, min_v, vEgo, M_TO_IDX): # info, kph, kph, mps
-
-    a, b = get_a_b_for_blinker(10*KPH_TO_MPS, 50*KPH_TO_MPS)
-    lf = int(min(idx+110, max(idx+(a*vEgo+b)*M_TO_IDX, idx+20))) # 15m ~ 65m
-    ld = int(min(idx+130, max(idx+(a*vEgo+b)*M_TO_IDX, idx+40))) # lookahead distance, lf보다 조금 더 먼 거리를 보게 함 
-    # left_turn_lane = [1, 2, 91]
-
-    if lf < 0:
-        lf = 0
-    elif lf > len(ids)-1:
-        lf = len(ids)-1
-    next_id_1 = ids[lf].split('_')[0]
-
-    if ld < 0:
-        ld = 0
-    elif ld > len(ids)-1:
-        ld = len(ids)-1
-    next_id_2 = ids[ld].split('_')[0]
-
-    a_little_far_yaw = lanelets[next_id_1]['yaw']
-    far_yaw = lanelets[next_id_2]['yaw']
-    yaw_variation = max(a_little_far_yaw) -min(a_little_far_yaw)
+def calculate_v_by_curvature(lane_information, ref_v, min_v, cur_v): # info, kph, kph, mps
     #lane information -> [1]:forward direction, [3]:curvature
-    print(f'yaw variation is {yaw_variation}')
-    if yaw_variation > 0.5:
-        target_v = 15 # min_v  #### 15km/h is proofed in k-city
-    else:
-        target_v = ref_v 
-    return  target_v   ## -> km/h
+    forward_curvature = lane_information[3]
+    
+    max_curvature = 500
+    min_curvature = 0
+    if forward_curvature < min_curvature:
+        forward_curvature = min_curvature
+    elif forward_curvature > max_curvature:
+        forward_curvature = max_curvature
+    
+    # x=lane_information[3]
+    # normalized_curvature = a*(x + 35)**3 + b*(x + 35)**2 + c*(x + 35) + 3 #0-100
+    # normalized_curvature = normalized_curvature/100
+    normalized_curvature = (forward_curvature - min_curvature) / (max_curvature - min_curvature)
+
+    decel = (ref_v - min_v) * (1 - normalized_curvature)
+    
+    return_v = ref_v - decel
+    if forward_curvature < max_curvature:
+        if cur_v - return_v*KPH_TO_MPS > 5/HZ: # smooth deceleration
+            return_v = cur_v*MPS_TO_KPH - (5/HZ*MPS_TO_KPH)
+        elif cur_v*MPS_TO_KPH > min_v and return_v*KPH_TO_MPS - cur_v > 5/HZ: # smooth acceleration
+            return_v = cur_v*MPS_TO_KPH + (5/HZ*MPS_TO_KPH)
+    if return_v > ref_v:
+        return_v = ref_v
+
+    return return_v*KPH_TO_MPS
 
 
 def get_a_b_for_curv(min, ignore):
